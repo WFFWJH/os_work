@@ -43,6 +43,8 @@ int getps(){
 	int ppid;
 	char comm[40];
 	char state;
+	struct pid_info *first_child;
+	struct pid_info *next_sibling;
   };	
   
   dir = opendir("/proc/");
@@ -66,7 +68,8 @@ int getps(){
 
 
   struct pid_info pids_arr[pid_num]; 
-  for( int i = 0;i < pid_num; i++ ){
+  for( int i = 0;i < pid_num; i++ )
+  {
     char* dname = dname_arr[i];
     char filename[40] ;
     sprintf(filename , "%s%s%s","/proc/",dname,"/stat");
@@ -81,15 +84,78 @@ int getps(){
 	sscanf(stat_txt,"%d %s %c %d %s",&pids_arr[i].pid,pids_arr[i].comm,\
 			&pids_arr[i].state,&pids_arr[i].ppid,remind_txt);
 
-//printf("pid: %d, comm: %s, stat: %c, ppid: %d\n",pids_arr[i].pid,pids_arr[i].comm,pids_arr[i].state,pids_arr[i].ppid,id,comm,state,ppid);
+	pids_arr[i].first_child=NULL;
+	pids_arr[i].next_sibling=NULL;
+	printf("pid: %d, comm: %s, stat: %c, ppid: %d\n",pids_arr[i].pid,pids_arr[i].comm,pids_arr[i].state,pids_arr[i].ppid);
 
 	fclose(fp);
+	if(*dname=='2'){
+		if(i==0){}
+		else{
+			struct pid_info tmp=pids_arr[0];
+			pids_arr[0] = pids_arr[i];
+			pids_arr[i] = tmp;
+			printf("exchange success! i=%d",i);
+		}
+	}
     }else{
 	printf("open file %s error!!!    \n",filename);
     }
   }
+  
   closedir(dir);
 
-  return 0;
+  void addchild(struct pid_info *parent, struct pid_info *child)
+  {
+	  if(parent->first_child==NULL) 
+	  {
+		  parent->first_child = child;
+	  }else{
+		  struct pid_info *sibling = parent->first_child->next_sibling;
+		  while(sibling!=NULL)
+		  {
+			  sibling = sibling->next_sibling;
+		  }
+		  sibling=child;
+	  }
+  }
+ 
+  for( int i = 0;i < pid_num; i++ ){
+	  
+  	for( int j = 1;j < pid_num; j++ ){
+		if(pids_arr[j].ppid == pids_arr[i].pid)
+		{
+			addchild(&pids_arr[i],&pids_arr[j]);	
+		}
+	}
+  }
+
+  // Print part (preorder Traversal)
+  
+ void print_preorder(struct pid_info * tree , int space_num)
+ {
+
+	for(int i=0;i<space_num;i++){
+		printf(" -- ");
+	}
+	printf("%s",tree->comm);
+ 	printf("\n|");
+	while(tree->first_child!=NULL)
+	{
+		
+		 print_preorder(tree->first_child,space_num+1);
+	}
+	 
+
+	while(tree->next_sibling!=NULL)
+	{
+	 	print_preorder(tree->next_sibling,space_num);
+	}
+ } 
+
+ int space_num = 0;
+ print_preorder(&pids_arr[0],space_num);
+ return 0;
+
 }
 
